@@ -1,7 +1,7 @@
 ---
 trigger: manual
 description: 
-globs: src/db/*.ts,src/middleware/*.ts,src/lib/*.ts
+globs: 
 ---
 
 ### Backend and Database

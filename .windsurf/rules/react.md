@@ -1,5 +1,5 @@
 ---
-trigger: manual
+trigger: glob
 description: 
 globs: *.tsx
 ---
