@@ -6,7 +6,8 @@
       "Bash(node:*)",
       "Bash(supabase status:*)",
       "Bash(supabase migration up:*)",
-      "Bash(supabase db psql:*)"
+      "Bash(supabase db psql:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

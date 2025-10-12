@@ -3,7 +3,7 @@ Your task is to implement a REST API endpoint based on the provided implementati
 First, carefully review the provided implementation plan:
 
 <implementation_plan>
-@generate-implementation-plan.md
+@.ai/flashbacks-list-implementation-plan.md
 </implementation_plan>
 
 <types>
@@ -11,7 +11,7 @@ First, carefully review the provided implementation plan:
 </types>
 
 <implementation_rules>
-@shared.md @backend.md
+.windsurf/rules/@shared.md .windsurf/rules/@backend.md
 </implementation_rules>
 
 <implementation_approach>

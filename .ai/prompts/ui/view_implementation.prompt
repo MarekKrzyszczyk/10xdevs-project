@@ -3,19 +3,19 @@ Your task is to implement a frontend view based on the provided implementation p
 First, review the implementation plan:
 
 <implementation_plan>
-{{implementation-plan}} <- replace with reference to view implementation plan (e.g., @generations-view-implementation-plan.md)
+@.ai/my-flashcards-view-implementation-plan.md
 </implementation_plan>
 
 Now review the implementation rules:
 
 <implementation_rules>
-{{frontend-rules}}  <- replace with reference to frontend rules (e.g., @shared.mdc, @frontend.mdc, @astro.mdc, @react.mdc, @ui-shadcn-helper.mdc)
+.windsurf/rules/@shared.md, .windsurf/rules/@frontend.md, .windsurf/rules/@astro.md, .windsurf/rules/@react.md, .windsurf/rules/@ui-shadcn-helper.md
 </implementation_rules>
 
 Review the defined types:
 
 <types>
-{{types}} <- replace with reference to DTO definitions (e.g., @types.ts)
+@types.ts)
 </types>
 
 Implement the plan according to the following approach:
