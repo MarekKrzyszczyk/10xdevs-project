@@ -3,13 +3,9 @@ import {z} from 'zod';
 import type {GenerateFlashcardsCommand, GenerateFlashcardsResponseDTO} from '@/types';
 import {AiGenerationService} from '@/lib/services/ai-generation.service';
 import {DEFAULT_USER_ID} from '@/db/supabase.client';
-import {createLogger} from '@/lib/utils/logger';
 
 // Disable prerendering for this API route (SSR only)
 export const prerender = false;
-
-// Create logger for this endpoint
-const logger = createLogger('/api/ai/generate');
 
 /**
  * Zod validation schema for flashcard generation request
@@ -30,19 +26,13 @@ const GenerateFlashcardsSchema = z.object({
  */
 export const POST: APIRoute = async ({request}) => {
     const userId = DEFAULT_USER_ID;
-    const requestLogger = logger.child({userId});
 
     try {
-        requestLogger.info('Received flashcard generation request');
-
         // 1. Parse and validate request body
         let body: unknown;
         try {
             body = await request.json();
         } catch (parseError) {
-            requestLogger.warn('Invalid JSON in request body', {
-                error: parseError instanceof Error ? parseError.message : 'Unknown parse error',
-            });
             return new Response(
                 JSON.stringify({
                     error: 'Validation failed',
@@ -60,8 +50,6 @@ export const POST: APIRoute = async ({request}) => {
                 message: err.message,
             }));
 
-            requestLogger.warn('Request validation failed', {errors});
-
             return new Response(
                 JSON.stringify({
                     error: 'Validation failed',
@@ -73,11 +61,6 @@ export const POST: APIRoute = async ({request}) => {
 
         const command: GenerateFlashcardsCommand = validation.data;
 
-        requestLogger.info('Calling AI generation service', {
-            textLength: command.text.length,
-            model: command.model,
-        });
-
         // 3. Call AI Generation Service
         const aiService = new AiGenerationService();
         const result: GenerateFlashcardsResponseDTO = await aiService.generateFlashcards(
@@ -85,12 +68,6 @@ export const POST: APIRoute = async ({request}) => {
             command.model,
             userId
         );
-
-        requestLogger.info('Flashcard generation successful', {
-            suggestionsCount: result.suggestions.length,
-            model: (result as any).model_used,
-            tokens: (result as any).tokens_used,
-        });
 
         // 4. Return success response
         return new Response(JSON.stringify(result), {
@@ -102,7 +79,6 @@ export const POST: APIRoute = async ({request}) => {
         if (error instanceof Error) {
             // Handle timeout errors
             if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
-                requestLogger.error('AI service timeout', {}, error);
                 return new Response(
                     JSON.stringify({
                         error: 'Gateway timeout',
@@ -114,7 +90,6 @@ export const POST: APIRoute = async ({request}) => {
 
             // Handle LLM API errors
             if (error.name === 'GatewayError') {
-                requestLogger.error('AI service gateway error', {}, error);
                 return new Response(
                     JSON.stringify({
                         error: 'Bad Gateway',
@@ -126,7 +101,6 @@ export const POST: APIRoute = async ({request}) => {
 
             // Handle service unavailable
             if (error.name === 'ServiceUnavailableError') {
-                requestLogger.error('AI service unavailable', {}, error);
                 return new Response(
                     JSON.stringify({
                         error: 'Service unavailable',
@@ -139,7 +113,6 @@ export const POST: APIRoute = async ({request}) => {
 
             // Handle no suggestions error
             if (error.name === 'NoSuggestionsError') {
-                requestLogger.warn('No valid suggestions generated', {}, error);
                 return new Response(
                     JSON.stringify({
                         error: 'No suggestions generated',
@@ -149,13 +122,6 @@ export const POST: APIRoute = async ({request}) => {
                 );
             }
         }
-
-        // Generic internal server error
-        requestLogger.error(
-            'Unexpected error during flashcard generation',
-            {},
-            error instanceof Error ? error : new Error(String(error))
-        );
 
         return new Response(
             JSON.stringify({
