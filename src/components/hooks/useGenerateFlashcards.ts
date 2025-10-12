@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import type {
 	GenerateFlashcardsCommand,
 	GenerateFlashcardsResponseDTO,
@@ -20,7 +21,9 @@ export function useGenerateFlashcards() {
 
 	const handleGenerate = useCallback(async () => {
 		if (text.length < 1000 || text.length > 10000) {
-			setError('Text must be between 1,000 and 10,000 characters.');
+			const errorMsg = 'Text must be between 1,000 and 10,000 characters.';
+			setError(errorMsg);
+			toast.error('Validation Error', { description: errorMsg });
 			return;
 		}
 
@@ -42,11 +45,17 @@ export function useGenerateFlashcards() {
 
 			if (!response.ok) {
 				if (response.status === 400) {
-					setError('The provided text must be between 1,000 and 10,000 characters.');
+					const errorMsg = 'The provided text must be between 1,000 and 10,000 characters.';
+					setError(errorMsg);
+					toast.error('Validation Error', { description: errorMsg });
 				} else if (response.status === 502 || response.status === 503) {
-					setError('The AI service is currently unavailable. Please try again later.');
+					const errorMsg = 'The AI service is currently unavailable. Please try again later.';
+					setError(errorMsg);
+					toast.error('Service Unavailable', { description: errorMsg });
 				} else {
-					setError('An unexpected error occurred. Please try again.');
+					const errorMsg = 'An unexpected error occurred. Please try again.';
+					setError(errorMsg);
+					toast.error('Generation Failed', { description: errorMsg });
 				}
 				return;
 			}
@@ -54,7 +63,9 @@ export function useGenerateFlashcards() {
 			const data: GenerateFlashcardsResponseDTO = await response.json();
 
 			if (!data.suggestions || data.suggestions.length === 0) {
-				setError('Could not generate flashcards from the provided text. Please try a different text.');
+				const errorMsg = 'Could not generate flashcards from the provided text. Please try a different text.';
+				setError(errorMsg);
+				toast.warning('No Results', { description: errorMsg });
 				return;
 			}
 
@@ -66,9 +77,14 @@ export function useGenerateFlashcards() {
 			}));
 
 			setSuggestions(viewModels);
+			toast.success('Flashcards Generated', {
+				description: `Successfully generated ${viewModels.length} flashcard suggestions`
+			});
 		} catch (err) {
 			console.error('Error generating flashcards:', err);
-			setError('An unexpected error occurred. Please check your connection and try again.');
+			const errorMsg = 'An unexpected error occurred. Please check your connection and try again.';
+			setError(errorMsg);
+			toast.error('Network Error', { description: errorMsg });
 		} finally {
 			setIsLoading(false);
 		}
@@ -86,13 +102,16 @@ export function useGenerateFlashcards() {
 
 	const handleRemoveSuggestion = useCallback((id: string) => {
 		setSuggestions((prev) => prev.filter((s) => s.id !== id));
+		toast.info('Suggestion Removed');
 	}, []);
 
 	const handleSaveSelected = useCallback(async () => {
 		const selected = suggestions.filter((s) => s.isSelected);
 
 		if (selected.length === 0) {
-			setError('Please select at least one flashcard to save.');
+			const errorMsg = 'Please select at least one flashcard to save.';
+			setError(errorMsg);
+			toast.warning('No Selection', { description: errorMsg });
 			return;
 		}
 
@@ -117,12 +136,21 @@ export function useGenerateFlashcards() {
 			});
 
 			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Save failed:', errorText);
+
 				if (response.status === 400 || response.status === 422) {
-					setError('Some flashcards could not be saved. Please check your inputs.');
+					const errorMsg = 'Some flashcards could not be saved. Please check your inputs.';
+					setError(errorMsg);
+					toast.error('Validation Error', { description: errorMsg });
 				} else if (response.status === 401) {
-					setError('You must be logged in to save flashcards.');
+					const errorMsg = 'You must be logged in to save flashcards.';
+					setError(errorMsg);
+					toast.error('Unauthorized', { description: errorMsg });
 				} else {
-					setError('An unexpected error occurred while saving. Please try again.');
+					const errorMsg = 'An unexpected error occurred while saving. Please try again.';
+					setError(errorMsg);
+					toast.error('Save Failed', { description: errorMsg });
 				}
 				return;
 			}
@@ -133,11 +161,15 @@ export function useGenerateFlashcards() {
 			const savedIds = new Set(selected.map((s) => s.id));
 			setSuggestions((prev) => prev.filter((s) => !savedIds.has(s.id)));
 
-			// Success feedback (could be enhanced with a toast notification)
-			console.log(`Successfully saved ${data.created} flashcards`);
+			// Success notification
+			toast.success('Flashcards Saved', {
+				description: `Successfully saved ${data.created} flashcard${data.created > 1 ? 's' : ''} to your collection`
+			});
 		} catch (err) {
 			console.error('Error saving flashcards:', err);
-			setError('An unexpected error occurred while saving. Please check your connection and try again.');
+			const errorMsg = 'An unexpected error occurred while saving. Please check your connection and try again.';
+			setError(errorMsg);
+			toast.error('Network Error', { description: errorMsg });
 		} finally {
 			setIsLoading(false);
 		}
