@@ -1,5 +1,6 @@
 import type {GenerateFlashcardsResponseDTO, FlashcardSuggestionDTO} from '@/types';
 import {createLogger} from '@/lib/utils/logger';
+import {getChatCompletion, type ResponseFormat} from '@/lib/openrouter/openrouter.service';
 
 /**
  * Custom error types for AI generation service
@@ -33,43 +34,16 @@ export class NoSuggestionsError extends Error {
 }
 
 /**
- * OpenRouter API response types
- */
-interface OpenRouterMessage {
-	role: string;
-	content: string;
-}
-
-interface OpenRouterChoice {
-	message: OpenRouterMessage;
-	finish_reason: string;
-}
-
-interface OpenRouterUsage {
-	prompt_tokens: number;
-	completion_tokens: number;
-	total_tokens: number;
-}
-
-interface OpenRouterResponse {
-	id: string;
-	model: string;
-	choices: OpenRouterChoice[];
-	usage: OpenRouterUsage;
-}
-
-/**
  * AI Generation Service
  * Handles communication with OpenRouter.ai API for flashcard generation
  */
 export class AiGenerationService {
-	private readonly apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-	private readonly defaultModel = 'anthropic/claude-3-haiku';
+	private readonly defaultModel = 'openai/gpt-4o-mini';
 	private readonly timeout = 30000; // 30 seconds
 	private readonly logger = createLogger('AiGenerationService');
 
 	/**
-	 * Generate flashcard suggestions from text using AI (MOCK IMPLEMENTATION)
+	 * Generate flashcard suggestions from text using AI
 	 * @param text - User-provided text (1000-10000 characters)
 	 * @param model - Optional model selection
 	 * @param userId - Authenticated user ID for logging
@@ -82,68 +56,164 @@ export class AiGenerationService {
 	): Promise<GenerateFlashcardsResponseDTO & {model_used: string; tokens_used: number}> {
 		const selectedModel = model || this.defaultModel;
 
-		this.logger.info('Generating flashcards (MOCK)', {
+		this.logger.info('Generating flashcards with OpenRouter', {
 			userId,
 			model: selectedModel,
 			textLength: text.length,
 		});
 
-		// Simulate API delay (500-1500ms)
-		const delay = Math.floor(Math.random() * 1000) + 500;
-		await new Promise((resolve) => setTimeout(resolve, delay));
+		// Create abort controller for timeout
+		const abortController = new AbortController();
+		const timeoutId = setTimeout(() => abortController.abort(), this.timeout);
 
-		// Mock response - generate flashcards based on text length
-		const mockContent = this.generateMockResponse(text);
+		try {
+			// Get API key from environment
+			const apiKey = import.meta.env.OPENROUTER_API_KEY;
 
-		// Parse and validate suggestions
-		const suggestions = this.parseSuggestions(mockContent);
-		const validSuggestions = this.validateSuggestions(suggestions);
+			if (!apiKey) {
+				this.logger.error('OPENROUTER_API_KEY not found in environment', {userId, model: selectedModel});
+				throw new GatewayError('AI service configuration error: OPENROUTER_API_KEY not configured');
+			}
 
-		if (validSuggestions.length === 0) {
-			this.logger.warn('No valid suggestions generated (MOCK)', {
-				userId,
-				textLength: text.length,
+			// Call OpenRouter API with JSON schema response format
+			type FlashcardsResponse = { flashcards: FlashcardSuggestionDTO[] };
+
+			const result = await getChatCompletion<FlashcardsResponse>({
+				userMessage: this.buildUserMessage(text),
+				systemMessage: this.buildSystemPrompt(),
 				model: selectedModel,
+				responseFormat: this.getFlashcardResponseFormat(),
+				parameters: {
+					temperature: 0.7,
+					max_tokens: 4000,
+				},
+				signal: abortController.signal,
+				apiKey: apiKey,
 			});
-			throw new NoSuggestionsError('Could not generate valid flashcards from text');
+
+			clearTimeout(timeoutId);
+
+			// Handle API errors
+			if (!result.success || !result.data) {
+				this.logger.error('OpenRouter API error', {
+					userId,
+					model: selectedModel,
+					error: result.error,
+				});
+
+				// Check for specific error patterns
+				if (result.error?.includes('timeout') || result.error?.includes('aborted')) {
+					throw new TimeoutError('Request to AI service timed out');
+				}
+				if (result.error?.includes('status 503')) {
+					throw new ServiceUnavailableError('AI service is temporarily unavailable');
+				}
+				if (result.error?.includes('OPENROUTER_API_KEY')) {
+					throw new GatewayError('AI service configuration error');
+				}
+
+				throw new GatewayError(result.error || 'Failed to generate flashcards');
+			}
+
+			// Extract and validate flashcards from response
+			const flashcards = result.data.flashcards || [];
+			const validSuggestions = this.validateSuggestions(flashcards);
+
+			if (validSuggestions.length === 0) {
+				this.logger.warn('No valid suggestions generated', {
+					userId,
+					textLength: text.length,
+					model: selectedModel,
+					rawCount: flashcards.length,
+				});
+				throw new NoSuggestionsError('Could not generate valid flashcards from text');
+			}
+
+			// Estimate token usage (4 chars per token is a rough approximation)
+			// In production, you might want to use the OpenRouter usage stats if available
+			const estimatedTokens = Math.floor((text.length + JSON.stringify(result.data).length) / 4);
+
+			// Log success
+			this.logger.info('Successfully generated flashcards', {
+				userId,
+				model: selectedModel,
+				suggestionsCount: validSuggestions.length,
+				tokensUsed: estimatedTokens,
+			});
+
+			return {
+				suggestions: validSuggestions,
+				model_used: selectedModel,
+				tokens_used: estimatedTokens,
+			};
+		} catch (error) {
+			clearTimeout(timeoutId);
+
+			// Re-throw known error types
+			if (
+				error instanceof TimeoutError ||
+				error instanceof GatewayError ||
+				error instanceof ServiceUnavailableError ||
+				error instanceof NoSuggestionsError
+			) {
+				throw error;
+			}
+
+			// Handle abort errors
+			if (error instanceof Error && error.name === 'AbortError') {
+				this.logger.error('Request aborted', {userId, model: selectedModel}, error);
+				throw new TimeoutError('Request to AI service was aborted');
+			}
+
+			// Log and wrap unexpected errors
+			this.logger.error(
+				'Unexpected error during flashcard generation',
+				{userId, model: selectedModel},
+				error instanceof Error ? error : new Error(String(error))
+			);
+
+			throw new GatewayError('An unexpected error occurred while generating flashcards');
 		}
-
-		// Mock token usage (approximate based on text length)
-		const mockTokens = Math.floor(text.length / 4) + Math.floor(Math.random() * 100);
-
-		// Log success
-		this.logger.info('Successfully generated flashcards (MOCK)', {
-			userId,
-			model: selectedModel,
-			suggestionsCount: validSuggestions.length,
-			tokensUsed: mockTokens,
-		});
-
-		return {
-			suggestions: validSuggestions,
-			model_used: selectedModel,
-			tokens_used: mockTokens,
-		};
 	}
 
 	/**
-	 * Generate mock response for testing
-	 * @param text - Input text
-	 * @returns Mock JSON response string
+	 * Get JSON schema response format for flashcard generation
 	 */
-	private generateMockResponse(text: string): string {
-		// Generate 5-8 mock flashcards
-		const count = Math.floor(Math.random() * 4) + 5;
-		const flashcards = [];
-
-		for (let i = 0; i < count; i++) {
-			flashcards.push({
-				front: `Question ${i + 1}: What is a key concept from the provided text?`,
-				back: `Answer ${i + 1}: This is a mock answer generated from the text content. The text discusses important topics related to the subject matter.`,
-			});
-		}
-
-		return JSON.stringify({ flashcards });
+	private getFlashcardResponseFormat(): ResponseFormat {
+		return {
+			type: 'json_schema',
+			json_schema: {
+				name: 'flashcard_generation',
+				strict: true,
+				schema: {
+					type: 'object',
+					properties: {
+						flashcards: {
+							type: 'array',
+							items: {
+								type: 'object',
+								properties: {
+									front: {
+										type: 'string',
+										description: 'The question or prompt for the flashcard (1-1000 characters)'
+									},
+									back: {
+										type: 'string',
+										description: 'The answer or explanation for the flashcard (1-1000 characters)'
+									}
+								},
+								required: ['front', 'back'],
+								additionalProperties: false
+							},
+							minItems: 5,
+							maxItems: 15
+						}
+					},
+					required: ['flashcards'],
+					additionalProperties: false
+				}
+			}
+		};
 	}
 
 	/**
@@ -180,30 +250,6 @@ Important: Return ONLY valid JSON. Do not include any additional text or explana
 	 */
 	private buildUserMessage(text: string): string {
 		return `Generate flashcards from the following text:\n\n${text}`;
-	}
-
-	/**
-	 * Parse JSON response and extract suggestions
-	 */
-	private parseSuggestions(content: string): FlashcardSuggestionDTO[] {
-		try {
-			const parsed = JSON.parse(content);
-
-			// Check if response has flashcards array
-			if (!parsed.flashcards || !Array.isArray(parsed.flashcards)) {
-				this.logger.error('Invalid response structure', {parsed});
-				return [];
-			}
-
-			return parsed.flashcards;
-		} catch (error) {
-			this.logger.error(
-				'Failed to parse LLM response',
-				{content},
-				error instanceof Error ? error : new Error(String(error))
-			);
-			return [];
-		}
 	}
 
 	/**
