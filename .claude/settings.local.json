@@ -7,7 +7,8 @@
       "Bash(supabase status:*)",
       "Bash(supabase migration up:*)",
       "Bash(supabase db psql:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(npm run build)"
     ],
     "deny": [],
     "ask": []
