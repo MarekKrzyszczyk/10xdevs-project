@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { GetFlashcardsQuerySchema } from '@/lib/schemas/flashcard.schema';
+import { GetFlashcardsQuerySchema, CreateFlashcardSchema } from '@/lib/schemas/flashcard.schema';
 import { flashcardService, DatabaseQueryError } from '@/lib/services/flashcard.service';
 import { DEFAULT_USER_ID } from '@/db/supabase.client';
 import { createLogger } from '@/lib/utils/logger';
@@ -7,7 +7,7 @@ import { createLogger } from '@/lib/utils/logger';
 // Disable prerendering for this API route (SSR only)
 export const prerender = false;
 
-const logger = createLogger('FlashcardsListAPI');
+const logger = createLogger('FlashcardsAPI');
 
 /**
  * GET /api/flashcards
@@ -103,6 +103,109 @@ export const GET: APIRoute = async ({ url, locals }) => {
 			JSON.stringify({
 				error: 'Internal server error',
 				message: 'An unexpected error occurred while retrieving flashcards',
+			}),
+			{ status: 500, headers: { 'Content-Type': 'application/json' } }
+		);
+	}
+};
+
+/**
+ * POST /api/flashcards
+ * Create a new flashcard
+ *
+ * Request Body:
+ * - front (string, required): The question/front side of the flashcard (1-1000 characters)
+ * - back (string, required): The answer/back side of the flashcard (1-1000 characters)
+ * - source (string, required): The source of the flashcard ('manual' | 'ai_generated')
+ *
+ * Returns:
+ * - 201: Success with created flashcard
+ * - 400: Bad request (validation errors)
+ * - 401: Unauthorized (no valid session)
+ * - 500: Internal server error
+ */
+export const POST: APIRoute = async ({ request, locals }) => {
+	const userId = DEFAULT_USER_ID;
+	const supabase = locals.supabase;
+
+	try {
+		// 1. Parse request body
+		let body: unknown;
+		try {
+			body = await request.json();
+		} catch (parseError) {
+			logger.warn('Failed to parse request body', { userId }, parseError as Error);
+			return new Response(
+				JSON.stringify({
+					error: 'Validation failed',
+					message: 'Invalid JSON in request body',
+				}),
+				{ status: 400, headers: { 'Content-Type': 'application/json' } }
+			);
+		}
+
+		// 2. Validate request body with Zod schema
+		const validation = CreateFlashcardSchema.safeParse(body);
+
+		if (!validation.success) {
+			const errors = validation.error.errors.map((err) => ({
+				field: err.path.join('.'),
+				message: err.message,
+			}));
+
+			logger.warn('Request body validation failed', { userId, body, errors });
+
+			return new Response(
+				JSON.stringify({
+					error: 'Validation failed',
+					details: errors,
+				}),
+				{ status: 400, headers: { 'Content-Type': 'application/json' } }
+			);
+		}
+
+		const command = validation.data;
+
+		logger.info('Processing flashcard creation request', {
+			userId,
+			source: command.source,
+		});
+
+		// 3. Call service to create flashcard
+		const result = await flashcardService.createFlashcard(supabase, userId, command);
+
+		// 4. Return success response
+		return new Response(JSON.stringify(result), {
+			status: 201,
+			headers: { 'Content-Type': 'application/json' },
+		});
+	} catch (error) {
+		// Handle known service errors
+		if (error instanceof DatabaseQueryError) {
+			logger.error(
+				'Database query failed',
+				{ userId },
+				error.originalError instanceof Error
+					? error.originalError
+					: new Error(String(error.originalError))
+			);
+
+			return new Response(
+				JSON.stringify({
+					error: 'Internal server error',
+					message: 'Failed to create flashcard',
+				}),
+				{ status: 500, headers: { 'Content-Type': 'application/json' } }
+			);
+		}
+
+		// Handle unexpected errors
+		logger.error('Unexpected error in POST /api/flashcards', { userId }, error as Error);
+
+		return new Response(
+			JSON.stringify({
+				error: 'Internal server error',
+				message: 'An unexpected error occurred while creating flashcard',
 			}),
 			{ status: 500, headers: { 'Content-Type': 'application/json' } }
 		);

@@ -1,6 +1,6 @@
 import type { SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
 import type { Database } from '@/db/database.type';
-import type { FlashcardListResponseDTO, FlashcardDTO, UpdateFlashcardCommand } from '@/types';
+import type { FlashcardListResponseDTO, FlashcardDTO, UpdateFlashcardCommand, CreateFlashcardCommand } from '@/types';
 import type { ValidatedFlashcardQueryParams } from '@/lib/schemas/flashcard.schema';
 import { createLogger } from '@/lib/utils/logger';
 
@@ -155,6 +155,67 @@ export class FlashcardService {
 				error as Error
 			);
 			throw new DatabaseQueryError('Unexpected error occurred while fetching flashcards', error);
+		}
+	}
+
+	/**
+	 * Create a new flashcard
+	 * @param supabase - Supabase client instance
+	 * @param userId - User ID who owns the flashcard
+	 * @param command - Create command with front, back, and source
+	 * @returns Created flashcard DTO
+	 * @throws {DatabaseQueryError} When database query fails
+	 */
+	async createFlashcard(
+		supabase: SupabaseClient,
+		userId: string,
+		command: CreateFlashcardCommand
+	): Promise<FlashcardDTO> {
+		this.logger.info('Creating flashcard', { userId, command });
+
+		try {
+			// Execute insert query
+			const { data, error } = await supabase
+				.from('flashcards')
+				.insert({
+					user_id: userId,
+					front: command.front,
+					back: command.back,
+					source: command.source,
+				})
+				.select('id, front, back, source, created_at, updated_at')
+				.single();
+
+			if (error) {
+				this.logger.error('Failed to create flashcard', { userId, command }, error);
+				throw new DatabaseQueryError('Failed to create flashcard in database', error);
+			}
+
+			// Transform to DTO
+			const flashcardDTO: FlashcardDTO = {
+				id: data.id,
+				front: data.front,
+				back: data.back,
+				source: data.source as 'manual' | 'ai_generated',
+				created_at: data.created_at,
+				updated_at: data.updated_at,
+			};
+
+			this.logger.info('Successfully created flashcard', { userId, flashcardId: data.id });
+			return flashcardDTO;
+		} catch (error) {
+			// Re-throw known errors
+			if (error instanceof DatabaseQueryError) {
+				throw error;
+			}
+
+			// Wrap unexpected errors
+			this.logger.error(
+				'Unexpected error while creating flashcard',
+				{ userId, command },
+				error as Error
+			);
+			throw new DatabaseQueryError('Unexpected error occurred while creating flashcard', error);
 		}
 	}
 

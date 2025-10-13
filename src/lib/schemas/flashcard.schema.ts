@@ -70,6 +70,45 @@ export const GetFlashcardsQuerySchema = z.object({
 export type ValidatedFlashcardQueryParams = z.infer<typeof GetFlashcardsQuerySchema>;
 
 /**
+ * Zod validation schema for POST /api/flashcards request body
+ * Validates flashcard creation command
+ */
+export const CreateFlashcardSchema = z.object({
+	/**
+	 * Front content of the flashcard (question)
+	 * @required
+	 */
+	front: z
+		.string()
+		.min(1, 'Front content cannot be empty')
+		.max(1000, 'Front content must not exceed 1000 characters')
+		.trim(),
+
+	/**
+	 * Back content of the flashcard (answer)
+	 * @required
+	 */
+	back: z
+		.string()
+		.min(1, 'Back content cannot be empty')
+		.max(1000, 'Back content must not exceed 1000 characters')
+		.trim(),
+
+	/**
+	 * Source of the flashcard (manual or ai_generated)
+	 * @required
+	 */
+	source: z.enum(['manual', 'ai_generated'], {
+		errorMap: () => ({ message: 'Source must be either "manual" or "ai_generated"' }),
+	}),
+});
+
+/**
+ * Type for validated create flashcard command
+ */
+export type ValidatedCreateFlashcardCommand = z.infer<typeof CreateFlashcardSchema>;
+
+/**
  * Zod validation schema for PUT /api/flashcards/:id request body
  * Validates flashcard update command
  */
