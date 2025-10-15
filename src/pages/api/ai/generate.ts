@@ -2,7 +2,6 @@ import type {APIRoute} from 'astro';
 import {z} from 'zod';
 import type {GenerateFlashcardsCommand, GenerateFlashcardsResponseDTO} from '@/types';
 import {AiGenerationService} from '@/lib/services/ai-generation.service';
-import {DEFAULT_USER_ID} from '@/db/supabase.client';
 
 // Disable prerendering for this API route (SSR only)
 export const prerender = false;
@@ -24,8 +23,19 @@ const GenerateFlashcardsSchema = z.object({
  * POST /api/ai/generate
  * Generate flashcard suggestions from user-provided text using AI
  */
-export const POST: APIRoute = async ({request}) => {
-    const userId = DEFAULT_USER_ID;
+export const POST: APIRoute = async ({request, locals}) => {
+    // Check authentication
+    if (!locals.user) {
+        return new Response(
+            JSON.stringify({
+                error: 'Unauthorized',
+                message: 'You must be logged in to generate flashcards',
+            }),
+            {status: 401, headers: {'Content-Type': 'application/json'}}
+        );
+    }
+
+    const userId = locals.user.id;
 
     try {
         // 1. Parse and validate request body

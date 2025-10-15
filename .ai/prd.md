@@ -121,6 +121,15 @@ Opis: Jako zalogowany użytkownik chcę mieć pewność, że moje fiszki nie są
 Kryteria akceptacji:
 - Tylko zalogowany użytkownik może wyświetlać, edytować i usuwać swoje fiszki.
 - Nie ma dostępu do fiszek innych użytkowników ani możliwości współdzielenia.
+- Logowanie i rejestracja odbywają się na dedykowanych stronach.
+- Logowanie wymaga podania adresu email i hasła.
+- Rejestracja wymaga podania adresu email, hasła i potwierdzenia hasła.
+- Użytkownik może logować się do systemu poprzez przycisk w prawym górnym rogu.
+- Użytkownik może się wylogować z systemu poprzez przycisk w prawym górnym rogu w głównym @Layout.astro.
+- Użytkownik NIE MOŻE generować fiszek bez logowania do systemu (US-001)
+- Użytkownik NIE MOŻE ręczne tworzyć fiszek bez logowania do systemu (US-007)
+- Użytkownik NIE MOŻE wyświetlać, edytować i usuwać fiszki innych użytkowników
+
 
 ## 6. Metryki sukcesu
 1. Efektywność generowania fiszek:

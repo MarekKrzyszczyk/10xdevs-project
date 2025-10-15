@@ -2,9 +2,8 @@
 import Layout from "../layouts/Layout.astro";
 import MyFlashcardsView from "../components/views/MyFlashcardsView";
 
-// TODO: Add authentication check here
-// For now, this page is accessible to all users
-// In production, redirect unauthenticated users to /login
+// This is a protected page - authentication required
+// Middleware will redirect unauthenticated users to /login
 export const prerender = false;
 ---
 
