@@ -1,0 +1,11 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { RegisterForm } from "../components/auth/RegisterForm";
+
+// This is a public authentication page
+export const prerender = false;
+---
+
+<Layout title="Create Account - 10x Cards">
+  <RegisterForm client:load />
+</Layout>

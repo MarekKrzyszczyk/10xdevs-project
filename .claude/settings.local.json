@@ -12,7 +12,8 @@
       "Bash(ls:*)",
       "Bash(echo:*)",
       "Bash(docker ps:*)",
-      "Bash(docker images:*)"
+      "Bash(docker images:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

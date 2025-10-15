@@ -7,6 +7,7 @@ interface Props {
 }
 
 const { title = "10x Astro Starter" } = Astro.props;
+const user = Astro.locals.user;
 ---
 
 <!doctype html>
@@ -19,8 +20,81 @@ const { title = "10x Astro Starter" } = Astro.props;
     <title>{title}</title>
   </head>
   <body>
+    <header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div class="container mx-auto flex h-14 items-center justify-between px-4">
+        <div class="flex gap-6 md:gap-10">
+          <a href="/" class="flex items-center space-x-2">
+            <span class="font-bold">10x Cards</span>
+          </a>
+          {user && (
+            <nav class="flex gap-6">
+              <a href="/generate" class="text-sm font-medium transition-colors hover:text-primary">
+                Generate
+              </a>
+              <a href="/flashcards" class="text-sm font-medium transition-colors hover:text-primary">
+                My Flashcards
+              </a>
+            </nav>
+          )}
+        </div>
+        <div class="flex items-center gap-3">
+          {user ? (
+            <>
+              <span class="text-sm text-muted-foreground hidden sm:inline">
+                {user.email}
+              </span>
+              <form method="post" id="logout-form">
+                <button
+                  type="submit"
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                >
+                  Logout
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <a
+                href="/login"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+              >
+                Login
+              </a>
+              <a
+                href="/register"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+              >
+                Register
+              </a>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
     <slot />
     <Toaster client:load />
+
+    <script>
+      // Handle logout form submission
+      const logoutForm = document.getElementById('logout-form');
+      if (logoutForm) {
+        logoutForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          try {
+            const response = await fetch('/api/auth/logout', {
+              method: 'POST',
+            });
+
+            if (response.ok) {
+              window.location.href = '/';
+            }
+          } catch (error) {
+            console.error('Logout error:', error);
+          }
+        });
+      }
+    </script>
   </body>
 </html>
 
