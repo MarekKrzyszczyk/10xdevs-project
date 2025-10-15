@@ -5,7 +5,6 @@ import {
 	DatabaseQueryError,
 	FlashcardNotFoundError,
 } from '@/lib/services/flashcard.service';
-import { DEFAULT_USER_ID } from '@/db/supabase.client';
 import { createLogger } from '@/lib/utils/logger';
 
 // Disable prerendering for this API route (SSR only)
@@ -33,7 +32,18 @@ const logger = createLogger('FlashcardDetailAPI');
  * - 500: Internal server error
  */
 export const PUT: APIRoute = async ({ params, request, locals }) => {
-	const userId = DEFAULT_USER_ID;
+	// Check authentication
+	if (!locals.user) {
+		return new Response(
+			JSON.stringify({
+				error: 'Unauthorized',
+				message: 'You must be logged in to update flashcards',
+			}),
+			{ status: 401, headers: { 'Content-Type': 'application/json' } }
+		);
+	}
+
+	const userId = locals.user.id;
 	const supabase = locals.supabase;
 	const flashcardId = params.id;
 
@@ -154,7 +164,18 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
  * - 500: Internal server error
  */
 export const DELETE: APIRoute = async ({ params, locals }) => {
-	const userId = DEFAULT_USER_ID;
+	// Check authentication
+	if (!locals.user) {
+		return new Response(
+			JSON.stringify({
+				error: 'Unauthorized',
+				message: 'You must be logged in to delete flashcards',
+			}),
+			{ status: 401, headers: { 'Content-Type': 'application/json' } }
+		);
+	}
+
+	const userId = locals.user.id;
 	const supabase = locals.supabase;
 	const flashcardId = params.id;
 

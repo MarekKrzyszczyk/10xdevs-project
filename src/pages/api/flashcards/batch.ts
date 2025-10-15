@@ -5,7 +5,6 @@ import type {
 	BatchCreateFlashcardResponseDTO,
 	FlashcardDTO,
 } from '@/types';
-import { DEFAULT_USER_ID } from '@/db/supabase.client';
 import { createLogger } from '@/lib/utils/logger';
 
 // Disable prerendering for this API route (SSR only)
@@ -44,7 +43,18 @@ const BatchCreateFlashcardSchema = z.object({
  * Create multiple flashcards at once (for AI-generated acceptance)
  */
 export const POST: APIRoute = async ({ request, locals }) => {
-	const userId = DEFAULT_USER_ID;
+	// Check authentication
+	if (!locals.user) {
+		return new Response(
+			JSON.stringify({
+				error: 'Unauthorized',
+				message: 'You must be logged in to create flashcards',
+			}),
+			{ status: 401, headers: { 'Content-Type': 'application/json' } }
+		);
+	}
+
+	const userId = locals.user.id;
 	const supabase = locals.supabase;
 
 	try {
