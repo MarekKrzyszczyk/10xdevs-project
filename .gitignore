@@ -23,3 +23,7 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 /10xCards.iml
+
+# playwright artifacts
+playwright-report/
+test-results/
