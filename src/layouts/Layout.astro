@@ -27,11 +27,11 @@ const user = Astro.locals.user;
             <span class="font-bold">10x Cards</span>
           </a>
           {user && (
-            <nav class="flex gap-6">
-              <a href="/generate" class="text-sm font-medium transition-colors hover:text-primary">
+            <nav class="flex gap-6" data-testid="main-navigation">
+              <a href="/generate" class="text-sm font-medium transition-colors hover:text-primary" data-testid="nav-generate-link">
                 Generate
               </a>
-              <a href="/flashcards" class="text-sm font-medium transition-colors hover:text-primary">
+              <a href="/flashcards" class="text-sm font-medium transition-colors hover:text-primary" data-testid="nav-flashcards-link">
                 My Flashcards
               </a>
             </nav>
