@@ -108,9 +108,9 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
 						</p>
 					</div>
 
-					<form onSubmit={handleSubmit} className="space-y-6">
+					<form onSubmit={handleSubmit} className="space-y-6" data-testid="login-form">
 						{errors.general && (
-							<div className="p-3 bg-red-500/20 border border-red-400/50 rounded-lg text-red-100 text-sm backdrop-blur-sm">
+							<div className="p-3 bg-red-500/20 border border-red-400/50 rounded-lg text-red-100 text-sm backdrop-blur-sm" data-testid="login-error-general">
 								{errors.general}
 							</div>
 						)}
@@ -129,6 +129,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
 								aria-invalid={!!errors.email}
 								aria-describedby={errors.email ? 'email-error' : undefined}
 								className="bg-white/10 border-white/20 text-white placeholder:text-white/50 backdrop-blur-sm focus:bg-white/15 focus:border-white/40"
+								data-testid="login-email-input"
 							/>
 							{errors.email && (
 								<p id="email-error" className="text-sm text-red-300">
@@ -151,6 +152,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
 								aria-invalid={!!errors.password}
 								aria-describedby={errors.password ? 'password-error' : undefined}
 								className="bg-white/10 border-white/20 text-white placeholder:text-white/50 backdrop-blur-sm focus:bg-white/15 focus:border-white/40"
+								data-testid="login-password-input"
 							/>
 							{errors.password && (
 								<p id="password-error" className="text-sm text-red-300">
@@ -173,6 +175,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
 							className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all"
 							size="lg"
 							disabled={isLoading}
+							data-testid="login-submit-button"
 						>
 							{isLoading ? 'Logging in...' : 'Login'}
 						</Button>
