@@ -22,3 +22,6 @@ CI/CD i Hosting:
 Testowanie:
 - Testy jednostkowe i integracyjne: Vitest z React Testing Library
 - Testy End-to-End (E2E): Playwright
+
+Deployments & Releases
+- Cloudflare Pages
